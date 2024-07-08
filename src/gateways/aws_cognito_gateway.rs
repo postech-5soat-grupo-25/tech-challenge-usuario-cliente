@@ -150,9 +150,6 @@ impl ClienteGateway for AwsCognitoRepository {
     }
 
     async fn create_cliente(&mut self, cliente: Cliente) -> Result<Cliente, DomainError> {
-        println!("chegueeeei");
-        // Convert the `Cliente` object into AWS Cognito attributes
-
         let cpf_string = &cliente.cpf().0;
         // Initialize an empty vector to hold successfully built attributes
         let mut attributes = Vec::new();

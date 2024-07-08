@@ -67,15 +67,17 @@ mod tests {
         env = Env::Test;
         assert_eq!(env.to_string(), "test");
     }
+
     #[tokio::test]
     async fn test_env_from_string(){
-        let mut env = Env::from_str("dev");
-        assert_eq!(config.env, Env::Dev);
-        env = Env::from_str("prod");
-        assert_eq!(config.env, Env::Prod);
-        env = Env::from_str("test");
-        assert_eq!(config.env, Env::Test);
+        let mut env = Env::from_str("dev").unwrap();
+        assert_eq!(env, Env::Dev);
+        env = Env::from_str("prod").unwrap();
+        assert_eq!(env, Env::Prod);
+        env = Env::from_str("test").unwrap();
+        assert_eq!(env, Env::Test);
     }
+    
     #[tokio::test]
     async fn test_build_env() {
         env::set_var("SECRET", "test_secret");
