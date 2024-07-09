@@ -12,7 +12,8 @@ use super::routes::{auth_route, cliente_route, usuario_route};
 use crate::adapters::jwt_authentication_adapter::JWTAuthenticationAdapter;
 use crate::api::config::{Config, Env};
 use crate::external::postgres;
-use crate::gateways::aws_cognito_gateway::AwsCognitoRepository;
+use crate::gateways::aws_cognito_cliente_gateway::AwsCognitoClienteRepository;
+use crate::gateways::aws_cognito_usuario_gateway::AwsCognitoUsuarioRepository;
 use crate::gateways::{
     in_memory_cliente_gateway::InMemoryClienteRepository,
     in_memory_usuario_gateway::InMemoryUsuarioRepository,
@@ -44,14 +45,14 @@ pub async fn main() -> Result<(), rocket::Error> {
         println!("Using in memory database");
         Arc::new(Mutex::new(InMemoryUsuarioRepository::new()))
     } else {
-        println!("Connecting to database: {}", config.db_url.clone());
-        let postgres_connection_manager = postgres::PgConnectionManager::new(config.db_url.clone())
-            .await
-            .unwrap();
-        let tables = postgres::get_tables();
+        println!("Connecting to Usuario pool");
+        // let postgres_connection_manager = postgres::PgConnectionManager::new(config.db_url.clone())
+        //     .await
+        //     .unwrap();
+        // let tables = postgres::get_tables();
 
         Arc::new(Mutex::new(
-            PostgresUsuarioGateway::new(postgres_connection_manager.client, tables).await,
+            AwsCognitoUsuarioRepository::new(String::from(config.user_pool_id_usuario)).await,
         ))
     };
 
@@ -61,29 +62,22 @@ pub async fn main() -> Result<(), rocket::Error> {
         println!("Using in memory database");
         Arc::new(Mutex::new(InMemoryClienteRepository::new()))
     } else {
-        println!("Connecting to database: {}", config.db_url);
+        println!("Connecting to Cliente pool");
 
-        let user_pool_id = match std::env::var("AWS_COGNITO_USER_POOL_ID") {
-            Ok(val) => val,
-            Err(_) => {
-                eprintln!("AWS_COGNITO_USER_POOL_ID environment variable not set.");
-                process::exit(1);
-            }
-        };
         Arc::new(Mutex::new(
-            AwsCognitoRepository::new(String::from(user_pool_id)).await,
+            AwsCognitoClienteRepository::new(String::from(config.user_pool_id_cliente)).await,
         ))
     };
 
     //let pagamento_adapter: Arc<Mutex<dyn PagamentoAdapter + Sync + Send>> = Arc::new(Mutex::new(MockPagamentoSuccesso {}));
 
     // Cloning cliente_repository to share ownership
-    let cloned_cliente_repository = Arc::clone(&cliente_repository);
+    // let cloned_cliente_repository = Arc::clone(&cliente_repository);
 
-    let postgres_connection_manager = postgres::PgConnectionManager::new(config.db_url.clone())
-        .await
-        .unwrap();
-    let tables = postgres::get_tables();
+    // let postgres_connection_manager = postgres::PgConnectionManager::new(config.db_url.clone())
+    //     .await
+    //     .unwrap();
+    // let tables = postgres::get_tables();
 
 
     let server_config = rocket::Config::figment()
