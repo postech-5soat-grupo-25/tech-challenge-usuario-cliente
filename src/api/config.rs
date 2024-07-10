@@ -97,6 +97,8 @@ mod tests {
     async fn test_build_env() {
         env::set_var("SECRET", "test_secret");
         env::set_var("ENV", "dev");
+        env::set_var("AWS_COGNITO_USER_POOL_ID_CLIENTE", "test_cliente_pool");
+        env::set_var("AWS_COGNITO_USER_POOL_ID_USUARIO", "test_cliente_usuario");
         let config = Config::build();
         
         assert_eq!(config.secret.clone(), "test_secret");
