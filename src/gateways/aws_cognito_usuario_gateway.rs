@@ -4,6 +4,8 @@ use aws_config::from_env;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_cognitoidentityprovider::operation::list_users;
 use aws_sdk_cognitoidentityprovider::types::AttributeType;
+use aws_sdk_cognitoidentityprovider::error::SdkError;
+use aws_sdk_cognitoidentityprovider::error::UnknownVariantError;
 use aws_sdk_cognitoidentityprovider::{config::Region, meta::PKG_VERSION, Client};
 use chrono::Utc;
 
@@ -59,14 +61,15 @@ impl AwsCognitoUsuarioRepository {
                 println!("Usuário Admin não encontrado. Criando...");
                 let _id = 0;
                 let _now = Utc::now().format("%Y-%m-%d %H:%M:%S%.3f%z").to_string();
+                let cpf = Cpf::new("000.000.000-00".to_string()).unwrap();
                 let usuario_admin = Usuario::new(
                     _id,
                     "Administrador".to_string(),
                     "admin@fastfood.com.br".to_string(),
-                    Cpf::new("000.000.000-00".to_string()).unwrap(),
+                    cpf,
                     "melhor_projeto".to_string(),
-                    "Admin".parse().unwrap(),
-                    "Ativo".parse().unwrap(),
+                    Tipo::Admin,
+                    Status::Ativo,
                     _now.clone(),
                     _now,
                 );
@@ -86,7 +89,7 @@ impl UsuarioGateway for AwsCognitoUsuarioRepository {
             .send()
             .await;
 
-        let mut Usuarios: Vec<Usuario> = Vec::new();
+        let mut usuarios: Vec<Usuario> = Vec::new();
 
         match response {
             Ok(response) => {
@@ -123,6 +126,7 @@ impl UsuarioGateway for AwsCognitoUsuarioRepository {
                     let status = Status::from_str(status_string.as_str());
 
                     if cpf.is_err() {
+                        println!("Error on cpf skiping");
                         continue
                     }
 
@@ -152,18 +156,35 @@ impl UsuarioGateway for AwsCognitoUsuarioRepository {
                                 data_atualizacao,
                             );
         
-                            Usuarios.push(Usuario);
+                            usuarios.push(Usuario);
                         },
                         Err(error) => {
                             println!("Failed to convert string, ID: {}", id);
                         }
                     }
                 }
-                Ok(Usuarios)
+                Ok(usuarios)
             }
+            Err(SdkError::ServiceError(err)) => {
+                println!("Service error: {:?}", err);
+                println!("Service error details: {:?}", err);
+                Err(DomainError::Invalid("Usuario".to_string()))
+            },
+            Err(SdkError::TimeoutError(source)) => {
+                println!("Timeout error: {:?}", source);
+                Err(DomainError::Invalid("Usuario".to_string()))
+            },
+            Err(SdkError::DispatchFailure (source)) => {
+                println!("Dispatch failure: {:?}", source);
+                Err(DomainError::Invalid("Usuario".to_string()))
+            },
+            Err(SdkError::ResponseError (source)) => {
+                println!("Response error: {:?}", source);
+                Err(DomainError::Invalid("Usuario".to_string()))
+            },
             Err(err) => {
-                println!("Error during aws cognito request: {}", err);
-                Err(DomainError::NotFound)
+                println!("Other SDK error: {:?}", err);
+                Err(DomainError::Invalid("Usuario".to_string()))
             }
 
         }
@@ -212,27 +233,27 @@ impl UsuarioGateway for AwsCognitoUsuarioRepository {
     }
 
     async fn create_usuario(&mut self, usuario: Usuario) -> Result<Usuario, DomainError> {
-        let cpf_string = usuario.cpf().0.clone();
+        let cpf_string = &usuario.cpf().0;
         // Initialize an empty vector to hold successfully built attributes
         let mut attributes = Vec::new();
-
+    
         let id = cpf_string.replace(".", "").replace("-", "");
         let string_id: &str = &id;
-        let tipo = usuario.tipo().to_string().clone();
-        let status = usuario.status().to_string().clone();
+        let tipo = &usuario.tipo().to_string();
+        let status = &usuario.status().to_string();
         // List of attribute specifications
         let attribute_specs = vec![
             ("custom:id", string_id),
             ("custom:nome", usuario.nome()),
             ("custom:email", usuario.email()),
-            ("custom:cpf", cpf_string.as_str()),
+            ("custom:cpf", cpf_string),
             ("custom:senha", usuario.senha()),
-            ("custom:tipo", tipo.as_str()),
-            ("custom:status", status.as_str()),
+            ("custom:tipo", tipo),
+            ("custom:status", status),
             ("custom:data_criacao", usuario.data_criacao()),
             ("custom:data_atualizacao", usuario.data_atualizacao()),
         ];
-
+    
         // Iterate over attribute specifications
         for (name, value) in attribute_specs {
             // Attempt to build an attribute
@@ -250,24 +271,40 @@ impl UsuarioGateway for AwsCognitoUsuarioRepository {
                 }
             }
         }
-
+    
         let response = self.client
             .admin_create_user()
             .user_pool_id(&self.user_pool_id)
-            .username(cpf_string.clone().as_str())
-            .temporary_password(cpf_string.as_str())
+            .username(cpf_string)
+            .temporary_password(cpf_string)
             .set_user_attributes(Some(attributes))
             .send()
             .await;
-
+    
         match response {
             Ok(resp) => {
                 println!("Successfully created user: {}", usuario.id());
                 Ok(usuario)
             },
+            Err(SdkError::ServiceError(err)) => {
+                println!("Service error: {:?}", err);
+                println!("Service error details: {:?}", err);
+                Err(DomainError::Invalid("Usuario".to_string()))
+            },
+            Err(SdkError::TimeoutError(source)) => {
+                println!("Timeout error: {:?}", source);
+                Err(DomainError::Invalid("Usuario".to_string()))
+            },
+            Err(SdkError::DispatchFailure (source)) => {
+                println!("Dispatch failure: {:?}", source);
+                Err(DomainError::Invalid("Usuario".to_string()))
+            },
+            Err(SdkError::ResponseError (source)) => {
+                println!("Response error: {:?}", source);
+                Err(DomainError::Invalid("Usuario".to_string()))
+            },
             Err(err) => {
-                println!("SDK ERROR: {}",err.to_string());
-                println!("Failed to create user: {}", cpf_string);
+                println!("Other SDK error: {:?}", err);
                 Err(DomainError::Invalid("Usuario".to_string()))
             }
         }
