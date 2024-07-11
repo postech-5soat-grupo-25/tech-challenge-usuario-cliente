@@ -17,18 +17,18 @@ fn option_to_string(option: Option<&str>) -> String {
     }
 }
 
-pub struct AwsCognitoRepository {
+pub struct AwsCognitoClienteRepository {
     client: Client,
     user_pool_id: String,
 }
 
-impl AwsCognitoRepository {
+impl AwsCognitoClienteRepository {
     pub async fn new(user_pool_id: String) -> Self {
         let region_provider = RegionProviderChain::default_provider();
 
         let config = aws_config::from_env().region(region_provider).load().await;
         let client = Client::new(&config);
-        AwsCognitoRepository {
+        AwsCognitoClienteRepository {
             client,
             user_pool_id,
         }
@@ -36,7 +36,7 @@ impl AwsCognitoRepository {
 }
 
 #[async_trait]
-impl ClienteGateway for AwsCognitoRepository {
+impl ClienteGateway for AwsCognitoClienteRepository {
     async fn get_clientes(&self) -> Result<Vec<Cliente>, DomainError> {
         let response = self
             .client
@@ -150,9 +150,6 @@ impl ClienteGateway for AwsCognitoRepository {
     }
 
     async fn create_cliente(&mut self, cliente: Cliente) -> Result<Cliente, DomainError> {
-        println!("chegueeeei");
-        // Convert the `Cliente` object into AWS Cognito attributes
-
         let cpf_string = &cliente.cpf().0;
         // Initialize an empty vector to hold successfully built attributes
         let mut attributes = Vec::new();

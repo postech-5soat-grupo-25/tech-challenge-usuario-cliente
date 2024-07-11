@@ -7,7 +7,6 @@ pub mod api;
 mod base;
 mod controllers;
 mod entities;
-mod external;
 mod gateways;
 mod traits;
 mod use_cases;

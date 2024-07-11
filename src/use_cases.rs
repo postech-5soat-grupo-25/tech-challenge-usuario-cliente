@@ -1,5 +1,3 @@
 pub mod gerenciamento_de_usuarios_use_case;
 pub mod gerenciamento_de_clientes_use_case;
-pub mod preparacao_e_entrega_use_case;
-pub mod pedidos_e_pagamentos_use_case;
-pub mod gerenciamento_de_produtos_use_case;
+

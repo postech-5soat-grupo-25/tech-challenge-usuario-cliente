@@ -8,30 +8,14 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use super::error_handling::generic_catchers;
-use super::routes::{auth_route, cliente_route, pedido_route, produto_route, usuario_route};
+use super::routes::{auth_route, cliente_route, usuario_route};
 use crate::adapters::jwt_authentication_adapter::JWTAuthenticationAdapter;
-use crate::adapters::mercadopago_pagamento_webhook_adapter::MercadoPagoPagamentoWebhookAdapter;
 use crate::api::config::{Config, Env};
-use crate::external::pagamento::mock::MockPagamentoSuccesso;
-use crate::external::postgres;
-use crate::gateways::aws_cognito_gateway::AwsCognitoRepository;
-use crate::gateways::{
-    in_memory_cliente_gateway::InMemoryClienteRepository,
-    in_memory_pagamento_gateway::InMemoryPagamentoRepository,
-    in_memory_pedido_gateway::InMemoryPedidoRepository,
-    in_memory_usuario_gateway::InMemoryUsuarioRepository,
-    postgres_cliente_gateway::PostgresClienteRepository,
-    postgres_pagamento_gateway::PostgresPagamentoRepository,
-    postgres_pedido_gateway::PostgresPedidoRepository,
-    postgres_produto_gateway::PostgresProdutoRepository,
-    postgres_usuario_gateway::PostgresUsuarioGateway,
-};
+use crate::gateways::aws_cognito_cliente_gateway::AwsCognitoClienteRepository;
+use crate::gateways::aws_cognito_usuario_gateway::AwsCognitoUsuarioRepository;
 use crate::traits::authentication_adapter::AuthenticationAdapter;
-use crate::traits::pagamento_adapter::PagamentoAdapter;
-use crate::traits::pagamento_webhook_adapter::PagamentoWebhookAdapter;
 use crate::traits::{
-    cliente_gateway::ClienteGateway, pagamento_gateway::PagamentoGateway,
-    pedido_gateway::PedidoGateway, produto_gateway::ProdutoGateway,
+    cliente_gateway::ClienteGateway,
     usuario_gateway::UsuarioGateway,
 };
 
@@ -48,110 +32,21 @@ pub async fn main() -> Result<(), rocket::Error> {
         Arc::new(JWTAuthenticationAdapter::new(config.secret.clone()));
 
     println!("Loading environment variables...");
-    let usuario_repository: Arc<Mutex<dyn UsuarioGateway + Sync + Send>> = if config.env
-        == Env::Test
-    {
-        println!("Using in memory database");
-        Arc::new(Mutex::new(InMemoryUsuarioRepository::new()))
-    } else {
-        println!("Connecting to database: {}", config.db_url.clone());
-        let postgres_connection_manager = postgres::PgConnectionManager::new(config.db_url.clone())
-            .await
-            .unwrap();
-        let tables = postgres::get_tables();
-
+    let usuario_repository: Arc<Mutex<dyn UsuarioGateway + Sync + Send>> = {
+        println!("Connecting to Usuario pool");
         Arc::new(Mutex::new(
-            PostgresUsuarioGateway::new(postgres_connection_manager.client, tables).await,
+            AwsCognitoUsuarioRepository::new(String::from(config.user_pool_id_usuario)).await,
         ))
     };
 
-    let cliente_repository: Arc<Mutex<dyn ClienteGateway + Sync + Send>> = if config.env
-        == Env::Test
-    {
-        println!("Using in memory database");
-        Arc::new(Mutex::new(InMemoryClienteRepository::new()))
-    } else {
-        println!("Connecting to database: {}", config.db_url);
+    let cliente_repository: Arc<Mutex<dyn ClienteGateway + Sync + Send>> = {
+        println!("Connecting to Cliente pool");
 
-        let user_pool_id = match std::env::var("AWS_COGNITO_USER_POOL_ID") {
-            Ok(val) => val,
-            Err(_) => {
-                eprintln!("AWS_COGNITO_USER_POOL_ID environment variable not set.");
-                process::exit(1);
-            }
-        };
         Arc::new(Mutex::new(
-            AwsCognitoRepository::new(String::from(user_pool_id)).await,
+            AwsCognitoClienteRepository::new(String::from(config.user_pool_id_cliente)).await,
         ))
     };
 
-    //let pagamento_adapter: Arc<Mutex<dyn PagamentoAdapter + Sync + Send>> = Arc::new(Mutex::new(MockPagamentoSuccesso {}));
-
-    // Cloning cliente_repository to share ownership
-    let cloned_cliente_repository = Arc::clone(&cliente_repository);
-
-    let postgres_connection_manager = postgres::PgConnectionManager::new(config.db_url.clone())
-        .await
-        .unwrap();
-    let tables = postgres::get_tables();
-    let produto_repository: Arc<Mutex<dyn ProdutoGateway + Sync + Send>> = Arc::new(Mutex::new(
-        PostgresProdutoRepository::new(postgres_connection_manager.client, tables).await,
-    ));
-
-    // Cloning produto_repository to share ownership
-    let cloned_produto_repository = Arc::clone(&produto_repository);
-
-    let pedido_repository: Arc<Mutex<dyn PedidoGateway + Sync + Send>> = if config.env == Env::Test
-    {
-        println!("Using in memory database");
-        Arc::new(Mutex::new(InMemoryPedidoRepository::new()))
-    } else {
-        println!("Connecting to database: {}", config.db_url);
-        let postgres_connection_manager = postgres::PgConnectionManager::new(config.db_url.clone())
-            .await
-            .unwrap();
-        let tables = postgres::get_tables();
-
-        Arc::new(Mutex::new(
-            PostgresPedidoRepository::new(
-                postgres_connection_manager.client,
-                tables,
-                cloned_cliente_repository,
-                cloned_produto_repository,
-            )
-            .await,
-        ))
-    };
-
-    let cloned_pedido_repository = Arc::clone(&pedido_repository);
-
-    let pagamento_repository: Arc<Mutex<dyn PagamentoGateway + Sync + Send>> = if config.env
-        == Env::Test
-    {
-        println!("Using in memory database");
-        Arc::new(Mutex::new(InMemoryPagamentoRepository::new()))
-    } else {
-        println!("Connecting to database: {}", config.db_url.clone());
-        let postgres_connection_manager = postgres::PgConnectionManager::new(config.db_url.clone())
-            .await
-            .unwrap();
-        let tables = postgres::get_tables();
-
-        Arc::new(Mutex::new(
-            PostgresPagamentoRepository::new(
-                postgres_connection_manager.client,
-                tables,
-                cloned_pedido_repository,
-            )
-            .await,
-        ))
-    };
-
-    let mercado_pago_adapter: Arc<dyn PagamentoWebhookAdapter + Sync + Send> =
-        Arc::new(MercadoPagoPagamentoWebhookAdapter::new());
-
-    let mut metodos_pagamento: HashMap<String, Arc<dyn PagamentoWebhookAdapter + Sync + Send>> = HashMap::new();
-    metodos_pagamento.insert("Mercado Pago".to_string(), mercado_pago_adapter);
 
     let server_config = rocket::Config::figment()
         .merge(("address", IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))))
@@ -167,8 +62,6 @@ pub async fn main() -> Result<(), rocket::Error> {
                     UrlObject::new("Auth", "/auth/openapi.json"),
                     UrlObject::new("Usuarios", "/usuarios/openapi.json"),
                     UrlObject::new("Clientes", "/clientes/openapi.json"),
-                    UrlObject::new("Produtos", "/produtos/openapi.json"),
-                    UrlObject::new("Pedidos", "/pedidos/openapi.json"),
                 ],
                 ..Default::default()
             }),
@@ -176,19 +69,11 @@ pub async fn main() -> Result<(), rocket::Error> {
         .mount("/auth", auth_route::routes())
         .mount("/usuarios", usuario_route::routes())
         .mount("/clientes", cliente_route::routes())
-        .mount("/produtos", produto_route::routes())
-        .mount("/pedidos", pedido_route::routes())
         .register("/usuarios", usuario_route::catchers())
         .register("/clientes", cliente_route::catchers())
-        .register("/produtos", produto_route::catchers())
-        .register("/pedidos", pedido_route::catchers())
         .manage(jwt_authentication_adapter)
         .manage(usuario_repository)
         .manage(cliente_repository)
-        .manage(produto_repository)
-        .manage(pedido_repository)
-        .manage(pagamento_repository)
-        .manage(metodos_pagamento)
         .configure(server_config)
         .launch()
         .await?;

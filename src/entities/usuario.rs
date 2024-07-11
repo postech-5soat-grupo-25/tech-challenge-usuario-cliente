@@ -36,6 +36,7 @@ impl FromStr for Tipo {
     }
 }
 
+
 impl fmt::Display for Tipo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
