@@ -8,6 +8,7 @@ use aws_sdk_cognitoidentityprovider::error::SdkError;
 use aws_sdk_cognitoidentityprovider::error::UnknownVariantError;
 use aws_sdk_cognitoidentityprovider::{config::Region, meta::PKG_VERSION, Client};
 use chrono::Utc;
+use mockall::{mock, predicate::*};
 
 use crate::base::domain_error::DomainError;
 use crate::{
@@ -393,4 +394,142 @@ impl UsuarioGateway for AwsCognitoUsuarioRepository {
         }
     }
 
+}
+
+#[cfg(test)]
+mock! {
+    pub AwsCognitoUsuarioClient {}
+
+    #[async_trait]
+    impl UsuarioGateway for AwsCognitoUsuarioClient {
+        async fn get_usuarios(&self) -> Result<Vec<Usuario>, DomainError>;
+        async fn get_usuario_by_cpf(&self, cpf: Cpf) -> Result<Usuario, DomainError>;
+        async fn get_usuario_by_id(&self, id: usize) -> Result<Usuario, DomainError>;
+        async fn create_usuario(&mut self, usuario: Usuario) -> Result<Usuario, DomainError>;
+        async fn update_usuario(&mut self, dados_usuario_atualizado: Usuario) -> Result<Usuario, DomainError>;
+        async fn delete_usuario(&mut self, cpf: Cpf) -> Result<(), DomainError>;
+    }
+}
+
+#[tokio::test]
+async fn test_get_usuarios_success() {
+    let mut mock_client = MockAwsCognitoUsuarioClient::new();
+
+    let usuario1 = Usuario::new(
+        1,
+        "John Doe".to_string(),
+        "john.doe@example.com".to_string(),
+        Cpf::new("123.456.789-00".to_string()).unwrap(),
+        "password123".to_string(),
+        Tipo::Admin,
+        Status::Ativo,
+        "2021-01-01T00:00:00Z".to_string(),
+        "2021-01-01T00:00:00Z".to_string(),
+    );
+
+    let usuario2 = Usuario::new(
+        2,
+        "Jane Smith".to_string(),
+        "jane.smith@example.com".to_string(),
+        Cpf::new("987.654.321-00".to_string()).unwrap(),
+        "password456".to_string(),
+        Tipo::Cozinha,
+        Status::Ativo,
+        "2021-01-02T00:00:00Z".to_string(),
+        "2021-01-02T00:00:00Z".to_string(),
+    );
+
+    mock_client.expect_get_usuarios()
+        .returning(move || Ok(vec![usuario1.clone(), usuario2.clone()]));
+
+    let result = mock_client.get_usuarios().await;
+
+    assert!(result.is_ok());
+    let retrieved_usuarios = result.unwrap();
+    assert_eq!(retrieved_usuarios.len(), 2);
+    assert_eq!(retrieved_usuarios[0].id(), &1);
+    assert_eq!(retrieved_usuarios[1].id(), &2);
+}
+
+#[tokio::test]
+async fn test_get_usuarios_empty() {
+    let mut mock_client = MockAwsCognitoUsuarioClient::new();
+
+    mock_client.expect_get_usuarios()
+        .returning(|| Ok(vec![]));
+
+    let result = mock_client.get_usuarios().await;
+
+    assert!(result.is_ok());
+    let retrieved_usuarios = result.unwrap();
+    assert!(retrieved_usuarios.is_empty());
+}
+
+#[tokio::test]
+async fn test_get_usuario_by_cpf_success() {
+    let mut mock_client = MockAwsCognitoUsuarioClient::new();
+
+    let usuario = Usuario::new(
+        1,
+        "John Doe".to_string(),
+        "john.doe@example.com".to_string(),
+        Cpf::new("123.456.789-00".to_string()).unwrap(),
+        "password123".to_string(),
+        Tipo::Admin,
+        Status::Ativo,
+        "2021-01-01T00:00:00Z".to_string(),
+        "2021-01-01T00:00:00Z".to_string(),
+    );
+
+    mock_client.expect_get_usuarios()
+        .returning(move || Ok(vec![usuario.clone()]));
+
+    let result = mock_client.get_usuario_by_cpf(Cpf::new("123.456.789-00".to_string()).unwrap()).await;
+
+    assert!(result.is_ok());
+    let retrieved_usuario = result.unwrap();
+    assert_eq!(retrieved_usuario.id(), &1);
+    assert_eq!(retrieved_usuario.nome(), "John Doe");
+    assert_eq!(retrieved_usuario.email(), "john.doe@example.com");
+}
+
+#[tokio::test]
+async fn test_get_usuario_by_cpf_not_found() {
+    let mut mock_client = MockAwsCognitoUsuarioClient::new();
+
+    mock_client.expect_get_usuarios()
+        .returning(|| Ok(vec![]));
+
+    let result = mock_client.get_usuario_by_cpf(Cpf::new("123.456.789-00".to_string()).unwrap()).await;
+
+    assert!(matches!(result, Err(DomainError::NotFound)));
+}
+
+#[tokio::test]
+async fn test_create_usuario_success() {
+    let mut mock_client = MockAwsCognitoUsuarioClient::new();
+
+    let usuario = Usuario::new(
+        1,
+        "John Doe".to_string(),
+        "john.doe@example.com".to_string(),
+        Cpf::new("123.456.789-00".to_string()).unwrap(),
+        "password123".to_string(),
+        Tipo::Admin,
+        Status::Ativo,
+        "2021-01-01T00:00:00Z".to_string(),
+        "2021-01-01T00:00:00Z".to_string(),
+    );
+
+    mock_client.expect_create_usuario()
+        .with(eq(usuario.clone()))
+        .returning(|usuario| Ok(usuario));
+
+    let result = mock_client.create_usuario(usuario.clone()).await;
+
+    assert!(result.is_ok());
+    let created_usuario = result.unwrap();
+    assert_eq!(created_usuario.id(), &1);
+    assert_eq!(created_usuario.nome(), "John Doe");
+    assert_eq!(created_usuario.email(), "john.doe@example.com");
 }

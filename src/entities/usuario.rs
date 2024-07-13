@@ -3,6 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+use std::cmp::PartialEq;
 
 use crate::{
     base::{
@@ -16,6 +17,31 @@ use crate::{
 pub enum Status {
     Ativo,
     Inativo,
+}
+
+impl FromStr for Status {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Status, Self::Err> {
+        match input {
+            "Ativo" => Ok(Status::Ativo),
+            "Inativo" => Ok(Status::Inativo),
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Status::Ativo => "Ativo",
+                Status::Inativo => "Inativo",
+            }
+        )
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, JsonSchema, PartialEq)]
@@ -193,12 +219,25 @@ impl Usuario {
     }
 }
 
+impl PartialEq for Usuario {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.nome == other.nome
+            && self.email == other.email
+            && self.cpf == other.cpf
+            && self.senha == other.senha
+            && self.tipo == other.tipo
+            && self.status == other.status
+            && self.data_criacao == other.data_criacao
+            && self.data_atualizacao == other.data_atualizacao
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn create_valid_usuario() -> Usuario {
-        let _now = Utc::now().format("%Y-%m-%d %H:%M:%S%.3f%z").to_string();
+    fn create_valid_usuario(now: Option<String>) -> Usuario {
+        let now: String = now.unwrap_or_else(|| Utc::now().format("%Y-%m-%d %H:%M:%S%.3f%z").to_string());
         Usuario::new(
             1,
             "Fulano da Silva".to_string(),
@@ -207,45 +246,52 @@ mod tests {
             "senha_segura".to_string(),
             Tipo::Admin,
             Status::Ativo,
-            _now.clone(),
-            _now,
+            now.clone(),
+            now,
         )
     }
 
     #[test]
     fn test_usuario_creation_valid() {
-        let usuario = create_valid_usuario();
+        let now = Utc::now().format("%Y-%m-%d %H:%M:%S%.3f%z").to_string();
+        let usuario = create_valid_usuario(Some(now.clone()));
         assert_eq!(usuario.id(), &1);
         assert_eq!(usuario.nome(), "Fulano da Silva");
         assert_eq!(usuario.email(), "fulano.silva@exemplo.com");
         assert_eq!(usuario.tipo(), &Tipo::Admin);
         assert_eq!(usuario.status(), &Status::Ativo);
+        assert_eq!(usuario.senha(), "senha_segura");
+        assert_eq!(usuario.cpf().0, "123.456.789-09".to_string());
+        assert_eq!(*usuario.data_criacao(), now.clone());
+        assert_eq!(*usuario.data_atualizacao(), now);
     }
 
     #[test]
     fn test_usuario_validate_entity_valid() {
-        let usuario = create_valid_usuario();
+        let usuario = create_valid_usuario(None);
         assert!(usuario.validate_entity().is_ok());
     }
 
     #[test]
     fn test_usuario_setters_valid() {
-        let mut usuario = create_valid_usuario();
+        let mut usuario = create_valid_usuario(None);
         let _ = usuario.set_nome("Ciclano de Almeida".to_string());
         let _ = usuario.set_email("ciclano.almeida@exemplo.com".to_string());
         let _ = usuario.set_senha("nova_senha_segura".to_string());
         usuario.set_tipo(Tipo::Cozinha);
         usuario.set_status(Status::Inativo);
+        let _ = usuario.set_cpf(Cpf::new("000.000.000-00".to_string()).unwrap());
         assert_eq!(usuario.nome(), "Ciclano de Almeida");
         assert_eq!(usuario.email(), "ciclano.almeida@exemplo.com");
         assert!(usuario.validate_senha(&"nova_senha_segura".to_string()));
         assert_eq!(usuario.tipo(), &Tipo::Cozinha);
         assert_eq!(usuario.status(), &Status::Inativo);
+        assert_eq!(usuario.cpf().0, "000.000.000-00".to_string());
     }
 
     #[test]
     fn test_usuario_set_nome_empty() {
-        let mut usuario = create_valid_usuario();
+        let mut usuario = create_valid_usuario(None);
         let result = usuario.set_nome("".to_string());
         assert!(
             matches!(result, Err(DomainError::Empty)),
@@ -256,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_usuario_set_email_empty() {
-        let mut usuario = create_valid_usuario();
+        let mut usuario = create_valid_usuario(None);
         let result = usuario.set_email("".to_string());
         assert!(
             matches!(result, Err(DomainError::Empty)),
@@ -267,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_usuario_set_senha_empty() {
-        let mut usuario = create_valid_usuario();
+        let mut usuario = create_valid_usuario(None);
         let result = usuario.set_senha("".to_string());
         assert!(
             matches!(result, Err(DomainError::Empty)),
@@ -277,8 +323,16 @@ mod tests {
     }
 
     #[test]
+    fn test_usuario_set_data_atualizacao_valid_format() {
+        let mut usuario = create_valid_usuario(None);
+        let now = Utc::now().format("%Y-%m-%d %H:%M:%S%.3f%z").to_string();
+        let _ = usuario.set_data_atualizacao(now.clone());
+        assert_eq!(*usuario.data_atualizacao(), now);
+    }
+
+    #[test]
     fn test_usuario_set_data_atualizacao_invalid_format() {
-        let mut usuario = create_valid_usuario();
+        let mut usuario = create_valid_usuario(None);
         let result = usuario.set_data_atualizacao("18-02-2024".to_string());
         assert!(
             matches!(result, Err(DomainError::Invalid(_))),
@@ -286,4 +340,56 @@ mod tests {
             result
         );
     }
+
+    #[test]
+    fn test_status_from_str() {
+        let mut test_status = Status::from_str("Ativo").unwrap();
+        assert_eq!(test_status, Status::Ativo);
+
+        test_status = Status::from_str("Inativo").unwrap();
+        assert_eq!(test_status, Status::Inativo);
+
+        let test_status = Status::from_str("Invalid");
+        assert_eq!(test_status, Err(()));
+    }
+
+    #[test]
+    fn test_display_ativo() {
+        let status = Status::Ativo;
+        assert_eq!(status.to_string(), "Ativo");
+    }
+
+    #[test]
+    fn test_display_inativo() {
+        let status = Status::Inativo;
+        assert_eq!(status.to_string(), "Inativo");
+    }
+
+    #[test]
+    fn test_tipo_from_str() {
+        // Test valid cases
+        let mut test_tipo = Tipo::from_str("Admin").unwrap();
+        assert_eq!(test_tipo, Tipo::Admin);
+
+        test_tipo = Tipo::from_str("Cozinha").unwrap();
+        assert_eq!(test_tipo, Tipo::Cozinha);
+
+        // Test invalid case
+        let test_tipo = Tipo::from_str("Invalid");
+        assert_eq!(test_tipo, Err(()));
+    }
+
+    #[test]
+    fn test_display_admin() {
+        let tipo = Tipo::Admin;
+        assert_eq!(tipo.to_string(), "Admin");
+    }
+
+    #[test]
+    fn test_display_cozinha() {
+        let tipo = Tipo::Cozinha;
+        assert_eq!(tipo.to_string(), "Cozinha");
+    }
+
+
 }

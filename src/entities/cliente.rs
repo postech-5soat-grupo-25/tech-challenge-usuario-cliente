@@ -95,6 +95,11 @@ impl Cliente {
     }
 }
 
+impl PartialEq for Cliente {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
 // Unit Tests
 #[cfg(test)]
 mod tests {

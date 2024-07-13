@@ -4,6 +4,7 @@ use aws_sdk_cognitoidentityprovider::operation::list_users;
 use aws_sdk_cognitoidentityprovider::types::AttributeType;
 use aws_sdk_cognitoidentityprovider::{config::Region, meta::PKG_VERSION, Client};
 use chrono::Utc;
+use mockall::{mock, predicate::*};
 
 use crate::{
     base::domain_error::DomainError, entities::cliente::Cliente, entities::cpf::Cpf,
@@ -225,4 +226,229 @@ impl ClienteGateway for AwsCognitoClienteRepository {
             }
         }
     }
+}
+
+#[cfg(test)]
+mock! {
+    pub AwsCognitoClient {}
+
+    #[async_trait]
+    impl ClienteGateway for AwsCognitoClient {
+        async fn get_clientes(&self) -> Result<Vec<Cliente>, DomainError>;
+        async fn get_cliente_by_cpf(&self, cpf: Cpf) -> Result<Cliente, DomainError>;
+        async fn get_cliente_by_id(&self, id: usize) -> Result<Cliente, DomainError>;
+        async fn create_cliente(&mut self, cliente: Cliente) -> Result<Cliente, DomainError>;
+        async fn delete_cliente(&mut self, cpf: Cpf) -> Result<(), DomainError>;
+    }
+}
+
+#[tokio::test]
+async fn test_get_cliente_by_cpf_success() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    let cliente = Cliente::new(
+        1,
+        "John Doe".to_string(),
+        "john.doe@example.com".to_string(),
+        Cpf::new("123.456.789-00".to_string()).unwrap(),
+        "2021-01-01T00:00:00Z".to_string(),
+        "2021-01-01T00:00:00Z".to_string(),
+    );
+
+    mock_client.expect_get_clientes()
+        .returning(move || Ok(vec![cliente.clone()]));
+
+    let result = mock_client.get_cliente_by_cpf(Cpf::new("123.456.789-00".to_string()).unwrap()).await;
+
+    assert!(result.is_ok());
+    let retrieved_cliente = result.unwrap();
+    assert_eq!(retrieved_cliente.id(), &1);
+    assert_eq!(retrieved_cliente.nome(), "John Doe");
+    assert_eq!(retrieved_cliente.email(), "john.doe@example.com");
+}
+
+#[tokio::test]
+async fn test_get_cliente_by_cpf_not_found() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    mock_client.expect_get_clientes()
+        .returning(|| Ok(vec![]));
+
+    let result = mock_client.get_cliente_by_cpf(Cpf::new("123.456.789-00".to_string()).unwrap()).await;
+
+    assert!(matches!(result, Err(DomainError::NotFound)));
+}
+
+#[tokio::test]
+async fn test_get_cliente_by_cpf_error() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    mock_client.expect_get_clientes()
+        .returning(|| Err(DomainError::NotFound));
+
+    let result = mock_client.get_cliente_by_cpf(Cpf::new("123.456.789-00".to_string()).unwrap()).await;
+
+    assert!(result.is_err());
+    assert!(matches!(result, Err(DomainError::NotFound)));
+}
+
+#[tokio::test]
+async fn test_get_cliente_by_id_found() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    let cliente = Cliente::new(
+        1,
+        "John Doe".to_string(),
+        "john.doe@example.com".to_string(),
+        Cpf::new("123.456.789-00".to_string()).unwrap(),
+        "2021-01-01T00:00:00Z".to_string(),
+        "2021-01-01T00:00:00Z".to_string(),
+    );
+
+    mock_client.expect_get_clientes()
+        .returning(move || Ok(vec![cliente.clone()]));
+
+    let result = mock_client.get_cliente_by_id(1).await;
+
+    assert!(result.is_ok());
+    let retrieved_cliente = result.unwrap();
+    assert_eq!(retrieved_cliente.id(), &1);
+    assert_eq!(retrieved_cliente.nome(), "John Doe");
+    assert_eq!(retrieved_cliente.email(), "john.doe@example.com");
+}
+
+#[tokio::test]
+async fn test_get_cliente_by_id_not_found() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    mock_client.expect_get_clientes()
+        .returning(|| Ok(vec![]));
+
+    let result = mock_client.get_cliente_by_id(1).await;
+
+    assert!(result.is_err());
+    assert!(matches!(result, Err(DomainError::NotFound)));
+}
+
+#[tokio::test]
+async fn test_get_cliente_by_id_error() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    mock_client.expect_get_clientes()
+        .returning(|| Err(DomainError::NotFound));
+
+    let result = mock_client.get_cliente_by_id(1).await;
+
+    assert!(result.is_err());
+    assert!(matches!(result, Err(DomainError::NotFound)));
+}
+
+#[tokio::test]
+async fn test_get_clientes_success() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    let cliente1 = Cliente::new(
+        1,
+        "John Doe".to_string(),
+        "john.doe@example.com".to_string(),
+        Cpf::new("123.456.789-00".to_string()).unwrap(),
+        "2021-01-01T00:00:00Z".to_string(),
+        "2021-01-01T00:00:00Z".to_string(),
+    );
+
+    let cliente2 = Cliente::new(
+        2,
+        "Jane Smith".to_string(),
+        "jane.smith@example.com".to_string(),
+        Cpf::new("987.654.321-00".to_string()).unwrap(),
+        "2021-01-02T00:00:00Z".to_string(),
+        "2021-01-02T00:00:00Z".to_string(),
+    );
+
+    mock_client.expect_get_clientes()
+        .returning(move || Ok(vec![cliente1.clone(), cliente2.clone()]));
+
+    let result = mock_client.get_clientes().await;
+
+    assert!(result.is_ok());
+    let retrieved_clientes = result.unwrap();
+    assert_eq!(retrieved_clientes.len(), 2);
+    assert_eq!(retrieved_clientes[0].id(), &1);
+    assert_eq!(retrieved_clientes[1].id(), &2);
+}
+
+#[tokio::test]
+async fn test_get_clientes_empty() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    mock_client.expect_get_clientes()
+        .returning(|| Ok(vec![]));
+
+    let result = mock_client.get_clientes().await;
+
+    assert!(result.is_ok());
+    let retrieved_clientes = result.unwrap();
+    assert!(retrieved_clientes.is_empty());
+}
+
+#[tokio::test]
+async fn test_get_clientes_error() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    mock_client.expect_get_clientes()
+        .returning(|| Err(DomainError::NotFound));
+
+    let result = mock_client.get_clientes().await;
+
+    assert!(result.is_err());
+    assert!(matches!(result, Err(DomainError::NotFound)));
+}
+
+#[tokio::test]
+async fn test_create_cliente_success() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    let cliente = Cliente::new(
+        1,
+        "John Doe".to_string(),
+        "john.doe@example.com".to_string(),
+        Cpf::new("123.456.789-00".to_string()).unwrap(),
+        "2021-01-01T00:00:00Z".to_string(),
+        "2021-01-01T00:00:00Z".to_string(),
+    );
+
+    mock_client.expect_create_cliente()
+        .with(eq(cliente.clone()))
+        .returning(|cliente| Ok(cliente));
+
+    let result = mock_client.create_cliente(cliente.clone()).await;
+
+    assert!(result.is_ok());
+    let created_cliente = result.unwrap();
+    assert_eq!(created_cliente.id(), &1);
+    assert_eq!(created_cliente.nome(), "John Doe");
+    assert_eq!(created_cliente.email(), "john.doe@example.com");
+}
+
+#[tokio::test]
+async fn test_create_cliente_error() {
+    let mut mock_client = MockAwsCognitoClient::new();
+
+    let cliente = Cliente::new(
+        1,
+        "John Doe".to_string(),
+        "john.doe@example.com".to_string(),
+        Cpf::new("123.456.789-00".to_string()).unwrap(),
+        "2021-01-01T00:00:00Z".to_string(),
+        "2021-01-01T00:00:00Z".to_string(),
+    );
+
+    mock_client.expect_create_cliente()
+        .with(eq(cliente.clone()))
+        .returning(|_| Err(DomainError::Invalid("Error creating cliente".to_string())));
+
+    let result = mock_client.create_cliente(cliente.clone()).await;
+
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), DomainError::Invalid("Error creating cliente".to_string()));
 }
