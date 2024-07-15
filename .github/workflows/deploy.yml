@@ -6,13 +6,13 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  ECR_RUST_API_REPOSITORY: usuario_cliente_api
+  ECR_USUARIO_CLIENTE_API_REPOSITORY: usuario_cliente_api
   EKS_CLUSTER_NAME: tech-challenge
   AWS_REGION: us-east-1
 
 jobs:
   deploy:
-    name: Deploy Rust App
+    name: Deploy Usuario Cliente App
     runs-on: ubuntu-latest
 
     steps:
@@ -41,8 +41,8 @@ jobs:
         IMAGE_TAG: ${{ steps.commit.outputs.short }}
       run: |
         docker pull brunomafra/usuario-cliente-tech-challenge
-        docker tag brunomafra/usuario-cliente-tech-challenge $ECR_REGISTRY/$ECR_RUST_API_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_RUST_API_REPOSITORY:latest
+        docker tag brunomafra/usuario-cliente-tech-challenge $ECR_REGISTRY/$ECR_USUARIO_CLIENTE_API_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_USUARIO_CLIENTE_API_REPOSITORY:latest
 
     - name: Update kube config
       run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION

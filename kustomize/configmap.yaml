@@ -3,10 +3,8 @@ kind: ConfigMap
 metadata:
   name: app-configmap
 data:
-  POSTGRES_DB: postgres
-  POSTGRES_PASSWORD: mainpassword
-  POSTGRES_USER: mainuser
-  DB_URL: postgresql://mainuser:mainpassword@tech-challenge-db.cra60s8i0ksr.us-east-1.rds.amazonaws.com:5432/TechChallengeDb
-  MOCK_PAGAMENTOS_URL: http://a49bcfc17b0814367b7de1fa4f286728-1742838876.us-east-1.elb.amazonaws.com:9000/payment/
-  API_HOST: aad8d67d34e714d6885106d5c3d06077-1355197257.us-east-1.elb.amazonaws.com:3000
-  AWS_COGNITO_USER_POOL_ID: us-east-1_YZhnEtbAT
+  AWS_SECRET_ACCESS_KEY: a7ObEfnHEgBL9+yNiR7UylmN7beI704x0nLzVcGY
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: AKIA2YQQH4LRWFFOZTUN
+  AWS_COGNITO_USER_POOL_ID_USUARIO: us-east-1_n1ztblhwJ
+  AWS_COGNITO_USER_POOL_ID_CLIENTE: us-east-1_pUBEk8AG2
