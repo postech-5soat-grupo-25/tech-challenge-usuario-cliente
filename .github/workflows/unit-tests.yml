@@ -1,22 +1,15 @@
-name: Unit tests
+name: Unit Tests
+permissions:
+  checks: write
 
 on:
   push:
-    branches: [ "develop" ]
-
-env:
-  CARGO_TERM_COLOR: always
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Activate nightly
-      run: rustup default nightly
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+  tests:
+    name: Check
+    uses: postech-5soat-grupo-25/tech-challenge-templates/.github/workflows/unit-tests.yml@main
