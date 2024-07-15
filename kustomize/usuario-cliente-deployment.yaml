@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: usuario-cliente-app
+  labels:
+    app: usuario-cliente-app
+spec:
+  template:
+    metadata:
+      name: usuario-cliente-app
+      labels:
+        app: usuario-cliente-app
+    spec:
+      containers:
+        - name: usuario-cliente-app-container
+          image: 739842188003.dkr.ecr.us-east-1.amazonaws.com/usuario_cliente_api:latest
+          ports:
+            - containerPort: 3000   
+          envFrom:
+          - configMapRef:
+              name: app-configmap      
+          resources:
+            requests:
+              cpu: 1m
+  replicas: 1
+  selector:
+    matchLabels:
+      app: usuario-cliente-app
