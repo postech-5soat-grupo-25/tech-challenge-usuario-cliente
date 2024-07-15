@@ -1,0 +1,16 @@
+{
+    "name": "Rust Environment",
+    "dockerFile": "Dockerfile",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "rust-lang.rust-analyzer"
+            ],
+            "settings": {
+                "rust.target": "x86_64-unknown-linux-gnu",
+                "terminal.integrated.fontFamily": "FiraCode Nerd Font"
+            }
+        }
+    },
+    "postCreateCommand": "chmod +x /usr/local/bin/rust-analyzer"
+}

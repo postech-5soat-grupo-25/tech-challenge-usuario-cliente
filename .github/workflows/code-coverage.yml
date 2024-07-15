@@ -1,0 +1,15 @@
+name: Code Coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  coverage:
+    name: Check
+    uses: postech-5soat-grupo-25/tech-challenge-templates/.github/workflows/code-coverage.yml@main
+    secrets:
+      codecov_token:  ${{ secrets.CODECOV_TOKEN }}
