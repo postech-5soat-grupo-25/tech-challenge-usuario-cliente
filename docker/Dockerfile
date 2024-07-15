@@ -1,4 +1,4 @@
-FROM rust:1.75-alpine3.19 as builder
+FROM rust:1.79-alpine3.20 AS builder
 
 # Feature apenas em nightly
 RUN rustup update nightly 
@@ -13,11 +13,10 @@ RUN apk add musl-dev openssl-dev
 
 COPY . .
 
+RUN apk --update add ca-certificates
+
 RUN cargo build --release
 
-# Criando um novo stage com imagem scratch e passando apenas os 
-# arquivos necessarios
-FROM scratch as production
-COPY --from=builder /usr/src/tech-challenge/target/release /
-ENTRYPOINT [ "/api" ]
+RUN cargo build --release
+ENTRYPOINT [ "/usr/src/tech-challenge/target/release/api" ]
 EXPOSE 3000
