@@ -54,6 +54,6 @@ jobs:
         IMAGE_TAG: ${{ steps.commit.outputs.short }}
       run: |
         kubectl apply -f kustomize/configmap.yaml
-        sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_RUST_API_REPOSITORY:latest|g" kustomize/usuario-cliente-deployment.yaml && \
+        sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_USUARIO_CLIENTE_API_REPOSITORY:latest|g" kustomize/usuario-cliente-deployment.yaml && \
         kubectl apply -f kustomize/usuario-cliente-deployment.yaml
         kubectl apply -f kustomize/usuario-cliente-svc.yaml
