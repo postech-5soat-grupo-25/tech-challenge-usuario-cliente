@@ -30,11 +30,11 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
                 match auth_adapter.validate_token(token.to_string(), None).await {
                     Ok(user_id) => Outcome::Success(AuthenticatedUser { user_id }),
                     Err(_) => {
-                        return Outcome::Failure((Status::Unauthorized, DomainError::Unauthorized))
+                        return Outcome::Error((Status::Unauthorized, DomainError::Unauthorized))
                     }
                 }
             }
-            None => Outcome::Failure((Status::BadRequest, DomainError::Invalid("Missing Token".to_string()))),
+            None => Outcome::Error((Status::BadRequest, DomainError::Invalid("Missing Token".to_string()))),
         }
     }
 }
