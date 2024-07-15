@@ -32,11 +32,11 @@ impl<'r> FromRequest<'r> for AdminUser {
                 match auth_adapter.validate_token(token.to_string(), Some(Tipo::Admin)).await {
                     Ok(user_id) => Outcome::Success(AdminUser { user_id }),
                     Err(_) => {
-                        return Outcome::Failure((Status::Unauthorized, DomainError::Unauthorized))
+                        return Outcome::Error((Status::Unauthorized, DomainError::Unauthorized))
                     }
                 }
             }
-            None => Outcome::Failure((Status::BadRequest, DomainError::Unauthorized)),
+            None => Outcome::Error((Status::BadRequest, DomainError::Unauthorized)),
         }
     }
 }
