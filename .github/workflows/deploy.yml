@@ -1,9 +1,8 @@
-name: Deploy
+name: '🚀 Rust Api Deploy'
 
 on:
-  push:
-    branches: 
-      - main
+  workflow_dispatch:
+
 
 env:
   CARGO_TERM_COLOR: always
@@ -41,8 +40,7 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}        
         IMAGE_TAG: ${{ steps.commit.outputs.short }}
       run: |
-        docker pull brunomafra/usuario-cliente-tech-challenge
-        docker tag brunomafra/usuario-cliente-tech-challenge $ECR_REGISTRY/$ECR_USUARIO_CLIENTE_API_REPOSITORY:latest
+        docker build -t $ECR_REGISTRY/$ECR_USUARIO_CLIENTE_API_REPOSITORY:latest -f Dockerfile .
         docker push $ECR_REGISTRY/$ECR_USUARIO_CLIENTE_API_REPOSITORY:latest
 
     - name: Update kube config
