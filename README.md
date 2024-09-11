@@ -1,7 +1,6 @@
 # `Tech Challenge` | PosTech 5SOAT • Grupo 25
 
-![microservice](https://img.shields.io/badge/usuario--cliente-blue?label=microsservi%C3%A7o&labelColor=%23505050&color=%23d63865) 
-[![sonarcloud](https://sonarcloud.io/api/project_badges/measure?project=postech-5soat-grupo-25_tech-challenge-usuario-cliente&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=postech-5soat-grupo-25_tech-challenge-usuario-cliente) [![codecov](https://codecov.io/gh/postech-5soat-grupo-25/tech-challenge-templates/graph/badge.svg?token=1O025QPPLM)](https://codecov.io/gh/postech-5soat-grupo-25/tech-challenge-templates)
+![microservice](https://img.shields.io/badge/usuario--cliente-blue?label=microsservi%C3%A7o&labelColor=%23505050&color=%23d63865) ![Rust](https://img.shields.io/badge/Rust-505050?logo=rust&logoColor=FFFFFF&labelColor=CE422B) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-505050?logo=postgresql&logoColor=FFFFFF&labelColor=4169E1) [![sonarcloud](https://sonarcloud.io/api/project_badges/measure?project=postech-5soat-grupo-25_tech-challenge-usuario-cliente&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=postech-5soat-grupo-25_tech-challenge-usuario-cliente) [![codecov](https://codecov.io/gh/postech-5soat-grupo-25/tech-challenge-usuario-cliente/graph/badge.svg?token=VQF5TUQ2VB)](https://codecov.io/gh/postech-5soat-grupo-25/tech-challenge-usuario-cliente)
 
 ## Sobre o Projeto
 
